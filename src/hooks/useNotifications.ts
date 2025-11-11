@@ -100,13 +100,18 @@ export const useNotifications = () => {
               body,
               id: Math.floor(Math.random() * 1000000),
               schedule: { at: new Date(Date.now() + 100) },
-              sound: "default",
-              smallIcon: "ic_launcher",
+              sound: "beep.wav",
+              smallIcon: "ic_stat_icon_config_sample",
               iconColor: "#4B9BF5",
+              ongoing: false,
+              autoCancel: true,
+              extra: {
+                vibrate: vibrationPattern,
+              },
             },
           ],
         });
-        console.log("[Notifications] Native notification sent");
+        console.log("[Notifications] Native notification sent with full wake settings");
       } else {
         // Use Service Worker for web to enable persistent notifications
         if (serviceWorkerRegistration && isServiceWorkerReady) {
