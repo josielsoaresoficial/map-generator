@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { Capacitor } from "@capacitor/core";
 import { useVibrationSettings } from "./useVibrationSettings";
+import { NotificationSoundType } from "@/utils/alertSound";
 
 let serviceWorkerRegistration: ServiceWorkerRegistration | null = null;
 
@@ -82,6 +83,7 @@ export const useNotifications = () => {
       tag?: string;
       requireInteraction?: boolean;
       vibrate?: number[];
+      soundType?: NotificationSoundType;
     }
   ) => {
     const vibrationPattern = options?.vibrate || getVibrationPattern();
@@ -93,6 +95,16 @@ export const useNotifications = () => {
     try {
       if (Capacitor.isNativePlatform()) {
         // Use Capacitor Local Notifications for native platforms
+        // Map sound types to different sound files
+        const soundMap: Record<NotificationSoundType, string> = {
+          task: "beep_task.wav",
+          pomodoro: "beep_pomodoro.wav",
+          break: "beep_break.wav",
+          reminder: "beep_reminder.wav"
+        };
+        
+        const soundFile = options?.soundType ? soundMap[options.soundType] : "beep.wav";
+        
         await LocalNotifications.schedule({
           notifications: [
             {
@@ -100,18 +112,19 @@ export const useNotifications = () => {
               body,
               id: Math.floor(Math.random() * 1000000),
               schedule: { at: new Date(Date.now() + 100) },
-              sound: "beep.wav",
+              sound: soundFile,
               smallIcon: "ic_stat_icon_config_sample",
               iconColor: "#4B9BF5",
               ongoing: false,
               autoCancel: true,
               extra: {
                 vibrate: vibrationPattern,
+                soundType: options?.soundType || "task",
               },
             },
           ],
         });
-        console.log("[Notifications] Native notification sent with full wake settings");
+        console.log(`[Notifications] Native notification sent with ${soundFile}`);
       } else {
         // Use Service Worker for web to enable persistent notifications
         if (serviceWorkerRegistration && isServiceWorkerReady) {
@@ -139,6 +152,7 @@ export const useNotifications = () => {
               tag: options?.tag || `notification-${Date.now()}`,
               requireInteraction: options?.requireInteraction !== undefined ? options.requireInteraction : true,
               vibrate: vibrationPattern,
+              soundType: options?.soundType || "task",
             },
             [messageChannel.port2]
           );

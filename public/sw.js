@@ -59,7 +59,7 @@ self.addEventListener('message', (event) => {
   console.log('[SW] Message received:', event.data);
   
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-    const { title, body, icon, tag, requireInteraction, vibrate } = event.data;
+    const { title, body, icon, tag, requireInteraction, vibrate, soundType } = event.data;
     
     const options = {
       body: body || 'Lembrete de tarefa',
@@ -86,14 +86,26 @@ self.addEventListener('message', (event) => {
       ],
       data: {
         url: '/',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        soundType: soundType || 'task'
       }
     };
 
     event.waitUntil(
       self.registration.showNotification(title, options)
         .then(() => {
-          console.log('[SW] Notification shown successfully');
+          console.log('[SW] Notification shown successfully with sound type:', soundType);
+          // Send sound play message to client
+          return clients.matchAll({ type: 'window' }).then(clientList => {
+            clientList.forEach(client => {
+              client.postMessage({
+                type: 'PLAY_NOTIFICATION_SOUND',
+                soundType: soundType || 'task'
+              });
+            });
+          });
+        })
+        .then(() => {
           // Send confirmation back to client
           event.ports[0]?.postMessage({ success: true });
         })

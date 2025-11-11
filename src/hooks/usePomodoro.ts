@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
+import { playAlertSound } from "@/utils/alertSound";
+import { useNotifications } from "./useNotifications";
 
 const WORK_TIME = 25 * 60; // 25 minutos em segundos
 const BREAK_TIME = 5 * 60; // 5 minutos em segundos
@@ -11,6 +13,7 @@ export const usePomodoro = () => {
   const [timeLeft, setTimeLeft] = useState(WORK_TIME);
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { sendNotification } = useNotifications();
 
   useEffect(() => {
     // Carregar sessões do localStorage
@@ -25,6 +28,67 @@ export const usePomodoro = () => {
       }
     }
   }, []);
+
+  const handleSessionComplete = useCallback(async () => {
+    setIsActive(false);
+    
+    if (isWorkSession) {
+      // Completou uma sessão de trabalho
+      const newCount = sessionsCompleted + 1;
+      setSessionsCompleted(newCount);
+      
+      // Salvar no localStorage
+      const today = new Date().toDateString();
+      localStorage.setItem("pomodoro-sessions", JSON.stringify({ date: today, count: newCount }));
+      
+      // Decidir tipo de pausa
+      const isLongBreak = newCount % 4 === 0;
+      setTimeLeft(isLongBreak ? LONG_BREAK_TIME : BREAK_TIME);
+      setIsWorkSession(false);
+      
+      const description = `Hora de ${isLongBreak ? "uma pausa longa" : "uma pausa"} de ${isLongBreak ? 15 : 5} minutos`;
+      
+      // Send notification
+      await sendNotification(
+        "Pomodoro Completo!",
+        description,
+        {
+          tag: "pomodoro-work-complete",
+          requireInteraction: true,
+          soundType: "pomodoro"
+        }
+      );
+      
+      // Play sound and show toast
+      playAlertSound("pomodoro");
+      toast.success("Sessão completa!", {
+        description,
+      });
+    } else {
+      // Completou uma pausa
+      setTimeLeft(WORK_TIME);
+      setIsWorkSession(true);
+      
+      const description = "Hora de voltar ao trabalho!";
+      
+      // Send notification
+      await sendNotification(
+        "Pausa Terminada!",
+        description,
+        {
+          tag: "pomodoro-break-complete",
+          requireInteraction: true,
+          soundType: "break"
+        }
+      );
+      
+      // Play sound and show toast
+      playAlertSound("break");
+      toast.info("Pausa terminada!", {
+        description,
+      });
+    }
+  }, [isWorkSession, sessionsCompleted, sendNotification]);
 
   useEffect(() => {
     if (isActive && timeLeft > 0) {
@@ -49,38 +113,7 @@ export const usePomodoro = () => {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isActive, timeLeft]);
-
-  const handleSessionComplete = () => {
-    setIsActive(false);
-    
-    if (isWorkSession) {
-      // Completou uma sessão de trabalho
-      const newCount = sessionsCompleted + 1;
-      setSessionsCompleted(newCount);
-      
-      // Salvar no localStorage
-      const today = new Date().toDateString();
-      localStorage.setItem("pomodoro-sessions", JSON.stringify({ date: today, count: newCount }));
-      
-      // Decidir tipo de pausa
-      const isLongBreak = newCount % 4 === 0;
-      setTimeLeft(isLongBreak ? LONG_BREAK_TIME : BREAK_TIME);
-      setIsWorkSession(false);
-      
-      toast.success("Sessão completa!", {
-        description: `Hora de ${isLongBreak ? "uma pausa longa" : "uma pausa"} de ${isLongBreak ? 15 : 5} minutos`,
-      });
-    } else {
-      // Completou uma pausa
-      setTimeLeft(WORK_TIME);
-      setIsWorkSession(true);
-      
-      toast.info("Pausa terminada!", {
-        description: "Hora de voltar ao trabalho!",
-      });
-    }
-  };
+  }, [isActive, timeLeft, handleSessionComplete]);
 
   const startPomodoro = () => {
     setIsActive(true);

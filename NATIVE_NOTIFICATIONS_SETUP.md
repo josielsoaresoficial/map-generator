@@ -54,7 +54,15 @@ Adicione:
 
 ### Criar `android/app/src/main/res/raw/beep.wav`
 
-Adicione um arquivo de som `beep.wav` na pasta `android/app/src/main/res/raw/` para o som personalizado das notificações.
+Adicione arquivos de som personalizados na pasta `android/app/src/main/res/raw/` para cada tipo de notificação:
+
+- `beep_task.wav` - Som para alertas de tarefas (3 beeps rápidos e agudos)
+- `beep_pomodoro.wav` - Som para conclusão de sessão Pomodoro (tons ascendentes)
+- `beep_break.wav` - Som para conclusão de pausa (tons descendentes)
+- `beep_reminder.wav` - Som para lembretes (beep único e suave)
+- `beep.wav` - Som padrão (fallback)
+
+Você pode gerar esses sons usando ferramentas online ou criar arquivos WAV personalizados. Os sons devem ser curtos (0.5-1 segundo) e em formato WAV para melhor compatibilidade.
 
 ## Passo 4: Configurar iOS
 
@@ -108,6 +116,17 @@ npx cap run ios
 5. A notificação deve aparecer mesmo com a tela bloqueada
 
 ## Notas Importantes
+
+### Tipos de Sons Personalizados
+
+O app agora suporta 4 tipos diferentes de sons de notificação:
+
+1. **Task (Tarefa)** - 3 beeps rápidos e agudos (900Hz) para alertas de tarefas
+2. **Pomodoro** - Tons ascendentes (600Hz → 800Hz) para conclusão de sessão de trabalho
+3. **Break (Pausa)** - Tons descendentes (800Hz → 600Hz) para conclusão de pausa
+4. **Reminder (Lembrete)** - Beep único e suave (700Hz) para lembretes antecipados
+
+Os sons são gerados automaticamente via Web Audio API no navegador e via arquivos WAV personalizados em plataformas nativas.
 
 ### Android
 - **Importance 5** garante que as notificações apareçam como heads-up mesmo com tela bloqueada

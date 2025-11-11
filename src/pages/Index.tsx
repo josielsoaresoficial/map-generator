@@ -76,13 +76,14 @@ const Index = () => {
         {
           tag: task.id,
           requireInteraction: true,
-          vibrate: [500, 200, 500, 200, 500]
+          vibrate: [500, 200, 500, 200, 500],
+          soundType: "task"
         }
       );
       
       // Only play sound and TTS if app is visible
       if (isVisible) {
-        playAlertSound();
+        playAlertSound("task");
         const selectedVoice = getSelectedVoice();
         await announceTask(task.description, selectedVoice);
       }
@@ -132,10 +133,12 @@ const Index = () => {
       {
         tag: `reminder-${task.id}-${minutesBefore}`,
         requireInteraction: false,
+        soundType: "reminder"
       }
     );
 
     if (!document.hidden) {
+      playAlertSound("reminder");
       toast.info("Lembrete", {
         description: message,
       });
@@ -176,6 +179,11 @@ const Index = () => {
             handleTaskAlert(task);
           }, 5 * 60 * 1000);
         }
+      } else if (event.data.type === 'PLAY_NOTIFICATION_SOUND') {
+        // Play the appropriate sound when notification is shown
+        const soundType = event.data.soundType || 'task';
+        playAlertSound(soundType);
+        console.log(`[SW Message] Playing ${soundType} sound`);
       }
     };
 
