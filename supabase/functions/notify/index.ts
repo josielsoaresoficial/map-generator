@@ -31,13 +31,16 @@ async function generateVAPIDAuthToken(endpoint: string): Promise<string> {
   const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
   const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
   
-  // Import private key for signing
-  const pemKey = `-----BEGIN EC PRIVATE KEY-----\n${vapidPrivateKey}\n-----END EC PRIVATE KEY-----`;
-  const binaryKey = Deno.core.encode(pemKey);
+  // Import private key for signing - convert base64 to ArrayBuffer
+  const binaryString = atob(vapidPrivateKey);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
   
   const cryptoKey = await crypto.subtle.importKey(
     "pkcs8",
-    binaryKey,
+    bytes.buffer,
     {
       name: "ECDSA",
       namedCurve: "P-256",
