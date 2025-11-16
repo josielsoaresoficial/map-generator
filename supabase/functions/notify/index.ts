@@ -31,8 +31,9 @@ async function generateVAPIDAuthToken(endpoint: string): Promise<string> {
   const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
   const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
   
-  // Import private key for signing - convert base64 to ArrayBuffer
-  const binaryString = atob(vapidPrivateKey);
+  // Import private key for signing - handle URL-safe base64
+  const base64 = vapidPrivateKey.replace(/-/g, '+').replace(/_/g, '/');
+  const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
@@ -134,6 +135,8 @@ const handler = async (req: Request): Promise<Response> => {
       body,
       icon: icon || "/icon-192x192.png",
       tag: tag || "notification",
+      requireInteraction: true,
+      vibrate: [500, 200, 500, 200, 500],
       data: data || {},
     });
 
