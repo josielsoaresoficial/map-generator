@@ -6,6 +6,64 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// VAPID configuration
+const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY")!;
+const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
+const vapidSubject = "mailto:josiel.soares.oficial@gmail.com";
+
+// Helper function to generate JWT token for VAPID
+async function generateVAPIDAuthToken(endpoint: string): Promise<string> {
+  const url = new URL(endpoint);
+  const audience = `${url.protocol}//${url.host}`;
+  
+  const header = {
+    typ: "JWT",
+    alg: "ES256",
+  };
+  
+  const payload = {
+    aud: audience,
+    exp: Math.floor(Date.now() / 1000) + 43200, // 12 hours
+    sub: vapidSubject,
+  };
+  
+  const encoder = new TextEncoder();
+  const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  
+  // Import private key for signing
+  const pemKey = `-----BEGIN EC PRIVATE KEY-----\n${vapidPrivateKey}\n-----END EC PRIVATE KEY-----`;
+  const binaryKey = Deno.core.encode(pemKey);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    binaryKey,
+    {
+      name: "ECDSA",
+      namedCurve: "P-256",
+    },
+    false,
+    ["sign"]
+  );
+  
+  const dataToSign = encoder.encode(`${headerB64}.${payloadB64}`);
+  const signature = await crypto.subtle.sign(
+    {
+      name: "ECDSA",
+      hash: { name: "SHA-256" },
+    },
+    cryptoKey,
+    dataToSign
+  );
+  
+  const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+  
+  return `${headerB64}.${payloadB64}.${signatureB64}`;
+}
+
 interface NotifyRequest {
   title: string;
   body: string;
@@ -79,12 +137,16 @@ const handler = async (req: Request): Promise<Response> => {
     const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
         try {
-          // Use Web Push API to send notification
+          // Generate VAPID auth token
+          const vapidToken = await generateVAPIDAuthToken(sub.endpoint);
+          
+          // Send notification with VAPID authentication
           const response = await fetch(sub.endpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "TTL": "86400",
+              "Authorization": `vapid t=${vapidToken}, k=${vapidPublicKey}`,
             },
             body: payload,
           });
@@ -99,9 +161,9 @@ const handler = async (req: Request): Promise<Response> => {
           }
 
           return { success: true, endpoint: sub.endpoint };
-        } catch (error) {
+        } catch (error: any) {
           console.error(`Error sending to ${sub.endpoint}:`, error);
-          return { success: false, endpoint: sub.endpoint, error };
+          return { success: false, endpoint: sub.endpoint, error: error.message };
         }
       })
     );
