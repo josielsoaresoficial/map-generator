@@ -9,6 +9,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useAlarmSettings } from "@/hooks/useAlarmSettings";
 import { useVibrationSettings } from "@/hooks/useVibrationSettings";
 import { useToast } from "@/hooks/use-toast";
+import { PushNotificationSettings } from "@/components/PushNotificationSettings";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -142,6 +143,9 @@ const Settings = () => {
               </div>
             </div>
           </Card>
+
+          {/* Push Notifications Settings */}
+          <PushNotificationSettings />
 
           {/* Voice Selection */}
           <Card className="p-6">

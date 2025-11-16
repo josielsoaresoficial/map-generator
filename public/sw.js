@@ -15,28 +15,38 @@ self.addEventListener('activate', (event) => {
 
 // Push notification handler
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push notification received');
+  console.log('[SW] Push notification received:', event);
   
-  const data = event.data?.json() || {};
-  const title = data.title || 'Assistente de Rotina';
-  
-  const options = {
-    body: data.body || 'Lembrete de tarefa',
+  let notificationData = {
+    title: 'Assistente de Rotina',
+    body: 'Nova notificação',
     icon: '/icon-192x192.png',
+    tag: 'notification',
+    data: {}
+  };
+
+  // Try to parse the push data
+  if (event.data) {
+    try {
+      notificationData = event.data.json();
+    } catch (e) {
+      console.error('[SW] Error parsing push data:', e);
+    }
+  }
+
+  const options = {
+    body: notificationData.body,
+    icon: notificationData.icon || '/icon-192x192.png',
     badge: '/icon-192x192.png',
     vibrate: [500, 200, 500, 200, 500],
     requireInteraction: true,
     silent: false,
-    tag: data.tag || 'task-notification',
+    tag: notificationData.tag,
     renotify: true,
     actions: [
       {
-        action: 'complete',
-        title: 'Completar'
-      },
-      {
-        action: 'snooze',
-        title: 'Adiar 5min'
+        action: 'open',
+        title: 'Abrir'
       },
       {
         action: 'dismiss',
@@ -44,13 +54,14 @@ self.addEventListener('push', (event) => {
       }
     ],
     data: {
-      url: data.url || '/',
-      timestamp: Date.now()
+      url: '/',
+      timestamp: Date.now(),
+      ...notificationData.data
     }
   };
 
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    self.registration.showNotification(notificationData.title, options)
   );
 });
 

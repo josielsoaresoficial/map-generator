@@ -1,0 +1,133 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.80.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+interface NotifyRequest {
+  title: string;
+  body: string;
+  tag?: string;
+  icon?: string;
+  data?: any;
+}
+
+const handler = async (req: Request): Promise<Response> => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get the user from the authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(
+      authHeader.replace("Bearer ", "")
+    );
+
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { title, body, tag, icon, data }: NotifyRequest = await req.json();
+
+    // Get user's push subscriptions
+    const { data: subscriptions, error: subsError } = await supabase
+      .from("push_subscriptions")
+      .select("*")
+      .eq("user_id", user.id);
+
+    if (subsError) {
+      console.error("Error fetching subscriptions:", subsError);
+      return new Response(JSON.stringify({ error: "Failed to fetch subscriptions" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!subscriptions || subscriptions.length === 0) {
+      return new Response(JSON.stringify({ message: "No subscriptions found" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Send push notifications to all subscriptions
+    const payload = JSON.stringify({
+      title,
+      body,
+      icon: icon || "/icon-192x192.png",
+      tag: tag || "notification",
+      data: data || {},
+    });
+
+    const results = await Promise.allSettled(
+      subscriptions.map(async (sub) => {
+        try {
+          // Use Web Push API to send notification
+          const response = await fetch(sub.endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "TTL": "86400",
+            },
+            body: payload,
+          });
+
+          if (!response.ok && response.status === 410) {
+            // Subscription is no longer valid, delete it
+            await supabase
+              .from("push_subscriptions")
+              .delete()
+              .eq("id", sub.id);
+            console.log(`Deleted invalid subscription: ${sub.id}`);
+          }
+
+          return { success: true, endpoint: sub.endpoint };
+        } catch (error) {
+          console.error(`Error sending to ${sub.endpoint}:`, error);
+          return { success: false, endpoint: sub.endpoint, error };
+        }
+      })
+    );
+
+    const successful = results.filter((r) => r.status === "fulfilled" && r.value.success).length;
+    const failed = results.length - successful;
+
+    return new Response(
+      JSON.stringify({
+        message: "Notifications sent",
+        successful,
+        failed,
+        total: results.length,
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  } catch (error: any) {
+    console.error("Error in notify function:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+};
+
+serve(handler);
