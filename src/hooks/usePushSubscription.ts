@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const VAPID_PUBLIC_KEY = "YOUR_VAPID_PUBLIC_KEY"; // This will need to be generated
+const VAPID_PUBLIC_KEY = "BH6Dhg7z5ND1SYboeGUQkxLLIu9wHPirJiCaesPcjjRhCB1GdVAiBh3E6sUg269FcK9cvWwpXkETmyQH-2-YR8E";
 
 export const usePushSubscription = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
