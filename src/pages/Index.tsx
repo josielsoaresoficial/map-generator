@@ -5,6 +5,7 @@ import { useTasks } from "@/hooks/useTasks";
 import { useVoiceAssistant } from "@/hooks/useVoiceAssistant";
 import { useTaskMonitor } from "@/hooks/useTaskMonitor";
 import { useNotifications } from "@/hooks/useNotifications";
+import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useVoiceSettings } from "@/hooks/useVoiceSettings";
 import { useAlarmSettings } from "@/hooks/useAlarmSettings";
 import { usePomodoro } from "@/hooks/usePomodoro";
@@ -31,6 +32,7 @@ const Index = () => {
   const { tasks, addTask, updateTask, deleteTask } = useTasks();
   const { isSpeaking, startAssistant, stopSpeaking, announceTask } = useVoiceAssistant();
   const { sendNotification, requestPermission, permission } = useNotifications();
+  const { sendPushNotification } = usePushSubscription();
   const { getSelectedVoice } = useVoiceSettings();
   const { settings: alarmSettings } = useAlarmSettings();
   const { theme, toggleTheme } = useTheme();
@@ -78,6 +80,16 @@ const Index = () => {
           requireInteraction: true,
           vibrate: [500, 200, 500, 200, 500],
           soundType: "task"
+        }
+      );
+      
+      // Also send push notification
+      await sendPushNotification(
+        "⏰ Hora da Tarefa!",
+        task.description,
+        {
+          tag: task.id,
+          data: { taskId: task.id, type: "task", time: task.time }
         }
       );
       

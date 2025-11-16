@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { playAlertSound } from "@/utils/alertSound";
 import { useNotifications } from "./useNotifications";
+import { usePushSubscription } from "./usePushSubscription";
 
 const WORK_TIME = 25 * 60; // 25 minutos em segundos
 const BREAK_TIME = 5 * 60; // 5 minutos em segundos
@@ -14,6 +15,7 @@ export const usePomodoro = () => {
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { sendNotification } = useNotifications();
+  const { sendPushNotification } = usePushSubscription();
 
   useEffect(() => {
     // Carregar sessões do localStorage
@@ -59,6 +61,16 @@ export const usePomodoro = () => {
         }
       );
       
+      // Send push notification
+      await sendPushNotification(
+        "🎉 Pomodoro Completo!",
+        description,
+        {
+          tag: "pomodoro-work-complete",
+          data: { type: "pomodoro", sessionsCompleted: newCount }
+        }
+      );
+      
       // Play sound and show toast
       playAlertSound("pomodoro");
       toast.success("Sessão completa!", {
@@ -82,13 +94,23 @@ export const usePomodoro = () => {
         }
       );
       
+      // Send push notification
+      await sendPushNotification(
+        "⏸️ Pausa Terminada!",
+        description,
+        {
+          tag: "pomodoro-break-complete",
+          data: { type: "break" }
+        }
+      );
+      
       // Play sound and show toast
       playAlertSound("break");
       toast.info("Pausa terminada!", {
         description,
       });
     }
-  }, [isWorkSession, sessionsCompleted, sendNotification]);
+  }, [isWorkSession, sessionsCompleted, sendNotification, sendPushNotification]);
 
   useEffect(() => {
     if (isActive && timeLeft > 0) {
