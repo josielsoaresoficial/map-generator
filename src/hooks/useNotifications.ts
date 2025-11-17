@@ -95,12 +95,15 @@ export const useNotifications = () => {
     }
 
     try {
-      // Use push notifications if user is subscribed (works with locked screen)
+      // CRITICAL: Use Web Push API if user is subscribed (ONLY way to work with locked screen)
       if (!Capacitor.isNativePlatform() && isSubscribed) {
-        console.log("[Notifications] Sending via push notification (works with locked screen)");
+        console.log("[Notifications] ✅ User is subscribed to push - sending via Web Push API");
+        console.log("[Notifications] This will work even with locked screen!");
+        
         const success = await sendPushNotification(title, body, {
           tag: options?.tag,
           icon: '/icon-192x192.png',
+          requireInteraction: true,
           data: {
             soundType: options?.soundType || "task",
             vibrate: vibrationPattern,
@@ -108,11 +111,14 @@ export const useNotifications = () => {
         });
         
         if (success) {
-          console.log("[Notifications] Push notification sent successfully");
+          console.log("[Notifications] ✅ Push notification sent successfully via Web Push Protocol");
           return;
         } else {
-          console.log("[Notifications] Push notification failed, falling back to local notification");
+          console.error("[Notifications] ❌ Push notification failed, falling back to local notification");
         }
+      } else if (!Capacitor.isNativePlatform()) {
+        console.warn("[Notifications] ⚠️ User NOT subscribed to push - will use service worker message (does NOT work with locked screen)");
+        console.warn("[Notifications] ⚠️ User needs to activate Push Notifications in Settings!");
       }
 
       if (Capacitor.isNativePlatform()) {
