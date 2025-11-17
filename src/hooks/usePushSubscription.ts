@@ -158,6 +158,8 @@ export const usePushSubscription = () => {
     options?: {
       tag?: string;
       icon?: string;
+      requireInteraction?: boolean;
+      vibrate?: number[];
       data?: any;
     }
   ) => {
@@ -175,6 +177,8 @@ export const usePushSubscription = () => {
           body,
           tag: options?.tag,
           icon: options?.icon,
+          requireInteraction: options?.requireInteraction,
+          vibrate: options?.vibrate,
           data: options?.data,
         },
         headers: {

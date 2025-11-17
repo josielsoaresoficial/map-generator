@@ -73,6 +73,8 @@ interface NotifyRequest {
   body: string;
   tag?: string;
   icon?: string;
+  requireInteraction?: boolean;
+  vibrate?: number[];
   data?: any;
 }
 
@@ -106,7 +108,9 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const { title, body, tag, icon, data }: NotifyRequest = await req.json();
+    const { title, body, tag, icon, requireInteraction, vibrate, data }: NotifyRequest = await req.json();
+
+    console.log("[Notify] Received notification request:", { title, body, tag, requireInteraction, vibrate });
 
     // Get user's push subscriptions
     const { data: subscriptions, error: subsError } = await supabase
@@ -123,6 +127,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!subscriptions || subscriptions.length === 0) {
+      console.log("[Notify] No subscriptions found for user:", user.id);
       return new Response(JSON.stringify({ message: "No subscriptions found" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -135,10 +140,12 @@ const handler = async (req: Request): Promise<Response> => {
       body,
       icon: icon || "/icon-192x192.png",
       tag: tag || "notification",
-      requireInteraction: true,
-      vibrate: [500, 200, 500, 200, 500],
+      requireInteraction: requireInteraction !== undefined ? requireInteraction : true,
+      vibrate: vibrate || [500, 200, 500, 200, 500],
       data: data || {},
     });
+
+    console.log("[Notify] Sending to", subscriptions.length, "subscriptions");
 
     const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
