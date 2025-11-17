@@ -14,7 +14,17 @@ import { PushNotificationSettings } from "@/components/PushNotificationSettings"
 const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { availableVoices, selectedVoiceURI, saveVoiceSettings, getSelectedVoice } = useVoiceSettings();
+  const { 
+    filteredVoices, 
+    selectedVoiceURI, 
+    preferredGender,
+    saveVoiceSettings, 
+    savePreferredGender,
+    getSelectedVoice,
+    getMaleVoices,
+    getFemaleVoices,
+    categorizeVoiceGender
+  } = useVoiceSettings();
   const { permission, requestPermission } = useNotifications();
   const { settings: alarmSettings, saveAlarmSettings } = useAlarmSettings();
   const { settings: vibrationSettings, saveVibrationSettings } = useVibrationSettings();
@@ -24,6 +34,15 @@ const Settings = () => {
     toast({
       title: "Voz alterada",
       description: "A nova voz será usada nos próximos alertas",
+    });
+  };
+
+  const handleGenderChange = (gender: "male" | "female" | "all") => {
+    savePreferredGender(gender);
+    const genderText = gender === "male" ? "masculinas" : gender === "female" ? "femininas" : "todas";
+    toast({
+      title: "Tipo de voz alterado",
+      description: `Mostrando vozes ${genderText}`,
     });
   };
 
@@ -161,26 +180,52 @@ const Settings = () => {
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="voice-select">Voz Selecionada</Label>
-                  <Select value={selectedVoiceURI || ""} onValueChange={handleVoiceChange}>
-                    <SelectTrigger id="voice-select" className="w-full">
-                      <SelectValue placeholder="Selecione uma voz" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="max-h-[300px] w-[var(--radix-select-trigger-width)]">
-                      {availableVoices.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          Nenhuma voz disponível
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="gender-select">Tipo de Voz</Label>
+                    <Select value={preferredGender} onValueChange={handleGenderChange}>
+                      <SelectTrigger id="gender-select" className="w-full">
+                        <SelectValue placeholder="Escolha o tipo de voz" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          Todas as Vozes ({getMaleVoices().length + getFemaleVoices().length})
                         </SelectItem>
-                      ) : (
-                        availableVoices.map((voice) => (
-                          <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
-                            {voice.name} ({voice.lang})
+                        <SelectItem value="male">
+                          🙋‍♂️ Voz Masculina ({getMaleVoices().length} disponíveis)
+                        </SelectItem>
+                        <SelectItem value="female">
+                          🙋‍♀️ Voz Feminina ({getFemaleVoices().length} disponíveis)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="voice-select">Voz Específica</Label>
+                    <Select value={selectedVoiceURI || ""} onValueChange={handleVoiceChange}>
+                      <SelectTrigger id="voice-select" className="w-full">
+                        <SelectValue placeholder="Selecione uma voz" />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="max-h-[300px] w-[var(--radix-select-trigger-width)]">
+                        {filteredVoices.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            Nenhuma voz disponível
                           </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                        ) : (
+                          filteredVoices.map((voice) => {
+                            const gender = categorizeVoiceGender(voice);
+                            const genderEmoji = gender === "male" ? "♂️" : "♀️";
+                            return (
+                              <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
+                                {genderEmoji} {voice.name} ({voice.lang})
+                              </SelectItem>
+                            );
+                          })
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <Button onClick={testVoice} variant="outline" size="sm" disabled={!selectedVoiceURI}>
