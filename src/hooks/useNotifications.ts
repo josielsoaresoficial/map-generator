@@ -3,6 +3,7 @@ import { LocalNotifications } from "@capacitor/local-notifications";
 import { Capacitor } from "@capacitor/core";
 import { useVibrationSettings } from "./useVibrationSettings";
 import { NotificationSoundType } from "@/utils/alertSound";
+import { usePushSubscription } from "./usePushSubscription";
 
 let serviceWorkerRegistration: ServiceWorkerRegistration | null = null;
 
@@ -10,6 +11,7 @@ export const useNotifications = () => {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [isServiceWorkerReady, setIsServiceWorkerReady] = useState(false);
   const { getVibrationPattern } = useVibrationSettings();
+  const { isSubscribed, sendPushNotification } = usePushSubscription();
 
   useEffect(() => {
     checkPermission();
@@ -93,6 +95,26 @@ export const useNotifications = () => {
     }
 
     try {
+      // Use push notifications if user is subscribed (works with locked screen)
+      if (!Capacitor.isNativePlatform() && isSubscribed) {
+        console.log("[Notifications] Sending via push notification (works with locked screen)");
+        const success = await sendPushNotification(title, body, {
+          tag: options?.tag,
+          icon: '/icon-192x192.png',
+          data: {
+            soundType: options?.soundType || "task",
+            vibrate: vibrationPattern,
+          }
+        });
+        
+        if (success) {
+          console.log("[Notifications] Push notification sent successfully");
+          return;
+        } else {
+          console.log("[Notifications] Push notification failed, falling back to local notification");
+        }
+      }
+
       if (Capacitor.isNativePlatform()) {
         // Use Capacitor Local Notifications for native platforms
         // Map sound types to different sound files
@@ -171,7 +193,7 @@ export const useNotifications = () => {
     } catch (error) {
       console.error("[Notifications] Error sending notification:", error);
     }
-  }, [permission, isServiceWorkerReady, getVibrationPattern]);
+  }, [permission, isServiceWorkerReady, getVibrationPattern, isSubscribed, sendPushNotification]);
 
   return { 
     permission, 
