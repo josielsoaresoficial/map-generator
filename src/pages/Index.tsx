@@ -18,7 +18,6 @@ import { TaskDialog } from "@/components/TaskDialog";
 import { AssistantButton } from "@/components/AssistantButton";
 import { PomodoroTimer } from "@/components/PomodoroTimer";
 import { StatisticsCard } from "@/components/StatisticsCard";
-import { Clock } from "@/components/Clock";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -325,11 +324,6 @@ const Index = () => {
               <Settings className="h-5 w-5" />
             </Button>
           </div>
-        </div>
-
-        {/* Clock */}
-        <div className="mb-6">
-          <Clock />
         </div>
 
         {/* Tabs */}
